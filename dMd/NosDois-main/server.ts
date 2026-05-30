@@ -20,7 +20,14 @@ import {
   Event,
   Reward,
   Quest,
-  Pet
+  Pet,
+  SpicyReward,
+  SpicyQuest,
+  LoveDiceAction,
+  LoveDiceLocation,
+  SecretFantasy,
+  DateOption,
+  WatchlistItem
 } from "./src/types";
 
 const app = express();
@@ -54,13 +61,22 @@ function getRequestCredentials(req: express.Request) {
 app.use((req, res, next) => {
   const { coupleId } = getRequestCredentials(req);
   const store = db.getStore();
-  
+
   const listsToScope = [
     "tasks", "events", "shopping", "expenses", "memories", "moods",
     "wishlist", "recipes", "mealPlan", "inventory", "rewards", "quests", "quickNotes", "pets",
-    "houseDocuments", "houseMaintenances", "houseContacts", "fixedBills", "fixedFunctions", "quizzes"
+    "houseDocuments", "houseMaintenances", "houseContacts", "fixedBills", "fixedFunctions", "quizzes",
+    // Intimacy Module
+    "spicyRewards", "spicyQuests", "spicyQuestCompletions",
+    "loveDiceActions", "loveDiceLocations", "loveDiceRolls",
+    "secretFantasies", "userFantasySelections",
+    "intimacyCheckins", "intimacyInsights",
+    // Entertainment Module
+    "dateOptions", "dateGachaRolls",
+    "watchlistItems", "watchHistory",
+    "wishlistDeposits"
   ];
-  
+
   listsToScope.forEach(key => {
     const list = (store as any)[key];
     if (list && Array.isArray(list)) {
@@ -75,7 +91,7 @@ app.use((req, res, next) => {
       };
     }
   });
-  
+
   next();
 });
 
@@ -2728,6 +2744,1021 @@ app.post("/api/spicy/buy-reward", (req, res) => {
 
   db.saveStore();
   res.json({ success: true, message: `Você adquiriu "${title}" com sucesso! O(A) parceiro(a) foi notificado e adicionado na sua Caixa de Desejos.`, users });
+});
+
+// ==========================================
+// INTIMACY MODULE (SPICY MODE) ENDPOINTS
+// ==========================================
+
+// ========== MERCADO NEGRO (SPICY REWARDS) ==========
+
+// Get all spicy rewards for couple
+app.get("/api/spicy-rewards", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const store = db.getStore();
+  const rewards = (store.spicyRewards || []).filter((r: any) => r.coupleId === coupleId && r.is_active);
+  res.json({ rewards });
+});
+
+// Create custom spicy reward
+app.post("/api/spicy-rewards/create", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const store = db.getStore();
+  const { title, description, cost, emoji } = req.body;
+
+  if (!store.spicyRewards) store.spicyRewards = [];
+
+  const newReward = {
+    id: "spicy_" + Date.now(),
+    title,
+    description: description || "",
+    cost: parseInt(cost) || 100,
+    emoji: emoji || "🌶️",
+    is_repeatable: true,
+    created_by: userId,
+    coupleId,
+    created_at: new Date().toISOString(),
+    is_active: true
+  };
+
+  store.spicyRewards.push(newReward);
+  db.saveStore();
+
+  res.json({ success: true, reward: newReward });
+});
+
+// Update spicy reward
+app.post("/api/spicy-rewards/update", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id, title, description, cost, emoji, is_active } = req.body;
+  const store = db.getStore();
+
+  const reward = (store.spicyRewards || []).find((r: any) => r.id === id && r.coupleId === coupleId);
+  if (!reward) {
+    return res.status(404).json({ error: "Recompensa não encontrada" });
+  }
+
+  if (title !== undefined) reward.title = title;
+  if (description !== undefined) reward.description = description;
+  if (cost !== undefined) reward.cost = parseInt(cost);
+  if (emoji !== undefined) reward.emoji = emoji;
+  if (is_active !== undefined) reward.is_active = is_active;
+
+  db.saveStore();
+  res.json({ success: true, reward });
+});
+
+// Delete spicy reward
+app.post("/api/spicy-rewards/delete", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id } = req.body;
+  const store = db.getStore();
+
+  store.spicyRewards = (store.spicyRewards || []).filter((r: any) => !(r.id === id && r.coupleId === coupleId));
+  db.saveStore();
+
+  res.json({ success: true, message: "Recompensa removida do Mercado Negro" });
+});
+
+// Redeem spicy reward
+app.post("/api/spicy-rewards/redeem", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const { rewardId } = req.body;
+  const store = db.getStore();
+  const { users, couple } = getCoupleAndUsers(store, coupleId || "couple_1");
+
+  const reward = (store.spicyRewards || []).find((r: any) => r.id === rewardId && r.coupleId === coupleId);
+  if (!reward) {
+    return res.status(404).json({ error: "Recompensa não encontrada" });
+  }
+
+  if ((users[userId]?.coins || 0) < reward.cost) {
+    return res.status(400).json({ error: "Moedas insuficientes para resgatar esta recompensa!" });
+  }
+
+  // Deduct coins
+  users[userId].coins -= reward.cost;
+
+  logActivityForCouple(store, coupleId, "spicy_reward_redeemed", `🌶️ ${userId} resgatou "${reward.title}" do Mercado Negro!`);
+
+  db.saveStore();
+  res.json({
+    success: true,
+    message: `Você resgatou "${reward.title}"! Mostre isso ao seu parceiro(a).`,
+    reward,
+    users
+  });
+});
+
+// ========== MISSÕES +18 (SPICY QUESTS) ==========
+
+// Get spicy quests
+app.get("/api/spicy-quests", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const store = db.getStore();
+  const quests = (store.spicyQuests || []).filter((q: any) => q.coupleId === coupleId && q.is_active);
+  res.json({ quests });
+});
+
+// Create custom spicy quest
+app.post("/api/spicy-quests/create", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const store = db.getStore();
+  const { title, description, bonus_xp, bonus_coins } = req.body;
+
+  if (!store.spicyQuests) store.spicyQuests = [];
+
+  const newQuest = {
+    id: "sq_" + Date.now(),
+    title,
+    description: description || "",
+    bonus_xp: parseInt(bonus_xp) || 100,
+    bonus_coins: parseInt(bonus_coins) || 200,
+    created_by: userId,
+    coupleId,
+    created_at: new Date().toISOString(),
+    is_active: true,
+    is_featured: false
+  };
+
+  store.spicyQuests.push(newQuest);
+  db.saveStore();
+
+  res.json({ success: true, quest: newQuest });
+});
+
+// Update spicy quest
+app.post("/api/spicy-quests/update", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id, title, description, bonus_xp, bonus_coins, is_active, is_featured } = req.body;
+  const store = db.getStore();
+
+  const quest = (store.spicyQuests || []).find((q: any) => q.id === id && q.coupleId === coupleId);
+  if (!quest) {
+    return res.status(404).json({ error: "Missão não encontrada" });
+  }
+
+  if (title !== undefined) quest.title = title;
+  if (description !== undefined) quest.description = description;
+  if (bonus_xp !== undefined) quest.bonus_xp = parseInt(bonus_xp);
+  if (bonus_coins !== undefined) quest.bonus_coins = parseInt(bonus_coins);
+  if (is_active !== undefined) quest.is_active = is_active;
+  if (is_featured !== undefined) quest.is_featured = is_featured;
+
+  db.saveStore();
+  res.json({ success: true, quest });
+});
+
+// Delete spicy quest
+app.post("/api/spicy-quests/delete", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id } = req.body;
+  const store = db.getStore();
+
+  store.spicyQuests = (store.spicyQuests || []).filter((q: any) => !(q.id === id && q.coupleId === coupleId));
+  db.saveStore();
+
+  res.json({ success: true, message: "Missão especial removida" });
+});
+
+// Complete spicy quest (award bonus)
+app.post("/api/spicy-quests/complete", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const { questId } = req.body;
+  const store = db.getStore();
+  const { users, couple } = getCoupleAndUsers(store, coupleId || "couple_1");
+
+  const quest = (store.spicyQuests || []).find((q: any) => q.id === questId && q.coupleId === coupleId);
+  if (!quest) {
+    return res.status(404).json({ error: "Missão não encontrada" });
+  }
+
+  // Check if already completed this week
+  const weekDate = getISOWeek(new Date());
+  const existing = (store.spicyQuestCompletions || []).find(
+    (c: any) => c.quest_id === questId && c.user_id === userId && c.week_date === weekDate
+  );
+
+  if (existing) {
+    return res.status(400).json({ error: "Você já completou esta missão nesta semana!" });
+  }
+
+  // Award bonuses
+  if (users[userId]) {
+    users[userId].coins = (users[userId].coins || 0) + quest.bonus_coins;
+    users[userId].points_weekly = (users[userId].points_weekly || 0) + quest.bonus_xp;
+  }
+
+  // Record completion
+  if (!store.spicyQuestCompletions) store.spicyQuestCompletions = [];
+  store.spicyQuestCompletions.push({
+    id: "sqc_" + Date.now(),
+    quest_id: questId,
+    user_id: userId,
+    coupleId,
+    completed_at: new Date().toISOString(),
+    week_date: weekDate,
+    bonus_awarded: true
+  });
+
+  logActivityForCouple(store, coupleId, "spicy_quest_completed", `🔥 ${userId} completou a missão "${quest.title}"! (+${quest.bonus_xp} XP, +${quest.bonus_coins} moedas)`);
+
+  db.saveStore();
+  res.json({
+    success: true,
+    message: `Missão completada! Você ganhou ${quest.bonus_xp} XP e ${quest.bonus_coins} moedas!`,
+    quest,
+    users
+  });
+});
+
+// Helper function to get ISO week
+function getISOWeek(date: Date): string {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  const week = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  return `${d.getFullYear()}-W${week.toString().padStart(2, '0')}`;
+}
+
+// ========== DADOS DO AMOR (LOVE DICE) ==========
+
+// Get dice configurations
+app.get("/api/love-dice/config", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const store = db.getStore();
+
+  const actions = (store.loveDiceActions || []).filter((a: any) => a.coupleId === coupleId && a.is_active).sort((a: any, b: any) => a.order - b.order);
+  const locations = (store.loveDiceLocations || []).filter((l: any) => l.coupleId === coupleId && l.is_active).sort((a: any, b: any) => a.order - b.order);
+
+  res.json({ actions, locations });
+});
+
+// Create dice action
+app.post("/api/love-dice/actions/create", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const store = db.getStore();
+  const { text, order } = req.body;
+
+  if (!store.loveDiceActions) store.loveDiceActions = [];
+
+  const newAction = {
+    id: "da_" + Date.now(),
+    text,
+    created_by: userId,
+    coupleId,
+    is_active: true,
+    order: order || (store.loveDiceActions.filter((a: any) => a.coupleId === coupleId).length + 1)
+  };
+
+  store.loveDiceActions.push(newAction);
+  db.saveStore();
+
+  res.json({ success: true, action: newAction });
+});
+
+// Update dice action
+app.post("/api/love-dice/actions/update", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id, text, is_active, order } = req.body;
+  const store = db.getStore();
+
+  const action = (store.loveDiceActions || []).find((a: any) => a.id === id && a.coupleId === coupleId);
+  if (!action) {
+    return res.status(404).json({ error: "Ação não encontrada" });
+  }
+
+  if (text !== undefined) action.text = text;
+  if (is_active !== undefined) action.is_active = is_active;
+  if (order !== undefined) action.order = order;
+
+  db.saveStore();
+  res.json({ success: true, action });
+});
+
+// Delete dice action
+app.post("/api/love-dice/actions/delete", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id } = req.body;
+  const store = db.getStore();
+
+  store.loveDiceActions = (store.loveDiceActions || []).filter((a: any) => !(a.id === id && a.coupleId === coupleId));
+  db.saveStore();
+
+  res.json({ success: true });
+});
+
+// Create dice location
+app.post("/api/love-dice/locations/create", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const store = db.getStore();
+  const { text, order } = req.body;
+
+  if (!store.loveDiceLocations) store.loveDiceLocations = [];
+
+  const newLocation = {
+    id: "dl_" + Date.now(),
+    text,
+    created_by: userId,
+    coupleId,
+    is_active: true,
+    order: order || (store.loveDiceLocations.filter((l: any) => l.coupleId === coupleId).length + 1)
+  };
+
+  store.loveDiceLocations.push(newLocation);
+  db.saveStore();
+
+  res.json({ success: true, location: newLocation });
+});
+
+// Update dice location
+app.post("/api/love-dice/locations/update", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id, text, is_active, order } = req.body;
+  const store = db.getStore();
+
+  const location = (store.loveDiceLocations || []).find((l: any) => l.id === id && l.coupleId === coupleId);
+  if (!location) {
+    return res.status(404).json({ error: "Local não encontrado" });
+  }
+
+  if (text !== undefined) location.text = text;
+  if (is_active !== undefined) location.is_active = is_active;
+  if (order !== undefined) location.order = order;
+
+  db.saveStore();
+  res.json({ success: true, location });
+});
+
+// Delete dice location
+app.post("/api/love-dice/locations/delete", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id } = req.body;
+  const store = db.getStore();
+
+  store.loveDiceLocations = (store.loveDiceLocations || []).filter((l: any) => !(l.id === id && l.coupleId === coupleId));
+  db.saveStore();
+
+  res.json({ success: true });
+});
+
+// Roll the love dice
+app.post("/api/love-dice/roll", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const { coin_cost } = req.body;
+  const store = db.getStore();
+  const { users } = getCoupleAndUsers(store, coupleId || "couple_1");
+
+  const actions = (store.loveDiceActions || []).filter((a: any) => a.coupleId === coupleId && a.is_active);
+  const locations = (store.loveDiceLocations || []).filter((l: any) => l.coupleId === coupleId && l.is_active);
+
+  if (actions.length === 0 || locations.length === 0) {
+    return res.status(400).json({ error: "Configure ações e locais antes de rolar os dados!" });
+  }
+
+  const cost = coin_cost || 0;
+
+  // Check if user has enough coins
+  if (cost > 0 && (users[userId]?.coins || 0) < cost) {
+    return res.status(400).json({ error: "Moedas insuficientes para rolar os dados!" });
+  }
+
+  // Deduct coins if needed
+  if (cost > 0 && users[userId]) {
+    users[userId].coins -= cost;
+  }
+
+  // Random selection
+  const randomAction = actions[Math.floor(Math.random() * actions.length)];
+  const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+
+  // Record roll
+  if (!store.loveDiceRolls) store.loveDiceRolls = [];
+  const roll = {
+    id: "roll_" + Date.now(),
+    action_id: randomAction.id,
+    location_id: randomLocation.id,
+    rolled_by: userId,
+    coupleId,
+    rolled_at: new Date().toISOString(),
+    coin_cost: cost
+  };
+  store.loveDiceRolls.push(roll);
+
+  db.saveStore();
+  res.json({
+    success: true,
+    result: {
+      action: randomAction.text,
+      location: randomLocation.text,
+      full_text: `${randomAction.text} ${randomLocation.text}`
+    },
+    coin_cost: cost,
+    users
+  });
+});
+
+// ========== COFRE DE FANTASIAS (SECRET FANTASY MATCH) ==========
+
+// Get available fantasies
+app.get("/api/fantasies", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const store = db.getStore();
+
+  // Get system fantasies + couple's custom fantasies
+  const systemFantasies = (store.secretFantasies || []).filter((f: any) => !f.coupleId || f.coupleId === coupleId);
+  res.json({ fantasies: systemFantasies });
+});
+
+// Create custom fantasy
+app.post("/api/fantasies/create", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const store = db.getStore();
+  const { title, description, category } = req.body;
+
+  if (!store.secretFantasies) store.secretFantasies = [];
+
+  const newFantasy = {
+    id: "sf_" + Date.now(),
+    title,
+    description: description || "",
+    category: category || "Outro",
+    added_by: userId,
+    is_custom: true,
+    coupleId,
+    is_active: true
+  };
+
+  store.secretFantasies.push(newFantasy);
+  db.saveStore();
+
+  res.json({ success: true, fantasy: newFantasy });
+});
+
+// Delete custom fantasy
+app.post("/api/fantasies/delete", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id } = req.body;
+  const store = db.getStore();
+
+  store.secretFantasies = (store.secretFantasies || []).filter(
+    (f: any) => !(f.id === id && f.is_custom && f.coupleId === coupleId)
+  );
+  db.saveStore();
+
+  res.json({ success: true });
+});
+
+// Select a fantasy (for matching)
+app.post("/api/fantasies/select", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const { fantasyId } = req.body;
+  const store = db.getStore();
+
+  if (!store.userFantasySelections) store.userFantasySelections = [];
+
+  // Check if already selected this fantasy
+  const existing = store.userFantasySelections.find(
+    (s: any) => s.fantasy_id === fantasyId && s.user_id === userId && s.coupleId === coupleId
+  );
+
+  if (existing) {
+    return res.status(400).json({ error: "Você já selecionou esta fantasia!" });
+  }
+
+  const selection = {
+    id: "ufs_" + Date.now(),
+    fantasy_id: fantasyId,
+    user_id: userId,
+    coupleId,
+    selected_at: new Date().toISOString(),
+    is_matched: false,
+    is_revealed: false
+  };
+
+  store.userFantasySelections.push(selection);
+
+  // Check for match - if partner also selected the same fantasy
+  const partnerSelections = store.userFantasySelections.filter(
+    (s: any) => s.fantasy_id === fantasyId && s.coupleId === coupleId && s.user_id !== userId
+  );
+
+  if (partnerSelections.length > 0) {
+    // It's a match!
+    selection.is_matched = true;
+    selection.matched_at = new Date().toISOString();
+    partnerSelections.forEach((ps: any) => {
+      ps.is_matched = true;
+      ps.matched_at = new Date().toISOString();
+    });
+
+    const fantasy = store.secretFantasies.find((f: any) => f.id === fantasyId);
+    logActivityForCouple(store, coupleId, "fantasy_match", `💕 MATCH! Vocês combinaram: "${fantasy?.title}"`);
+
+    db.saveStore();
+    return res.json({
+      success: true,
+      matched: true,
+      message: "MATCH! Vocês selecionaram a mesma fantasia!",
+      fantasy
+    });
+  }
+
+  db.saveStore();
+  res.json({ success: true, matched: false, message: "Fantasia registrada. Aguardando parceiro(a)..." });
+});
+
+// Get user's fantasy selections
+app.get("/api/fantasies/my-selections", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const store = db.getStore();
+
+  const selections = (store.userFantasySelections || [])
+    .filter((s: any) => s.user_id === userId && s.coupleId === coupleId)
+    .map((s: any) => {
+      const fantasy = store.secretFantasies?.find((f: any) => f.id === s.fantasy_id);
+      return { ...s, fantasy };
+    });
+
+  const matched = selections.filter((s: any) => s.is_matched && !s.is_revealed);
+
+  res.json({ selections, matchedCount: matched.length });
+});
+
+// Reveal matched fantasy
+app.post("/api/fantasies/reveal", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { selectionId } = req.body;
+  const store = db.getStore();
+
+  const selection = (store.userFantasySelections || []).find(
+    (s: any) => s.id === selectionId && s.coupleId === coupleId && s.is_matched
+  );
+
+  if (!selection) {
+    return res.status(404).json({ error: "Seleção não encontrada ou não combinada" });
+  }
+
+  selection.is_revealed = true;
+
+  // Reveal partner's selection too
+  const partnerSelection = store.userFantasySelections.find(
+    (s: any) => s.fantasy_id === selection.fantasy_id && s.coupleId === coupleId && s.user_id !== selection.user_id
+  );
+  if (partnerSelection) {
+    partnerSelection.is_revealed = true;
+  }
+
+  const fantasy = store.secretFantasies?.find((f: any) => f.id === selection.fantasy_id);
+
+  db.saveStore();
+  res.json({ success: true, fantasy, revealed: true });
+});
+
+// ========== TRACKER DE INTIMIDADE ==========
+
+// Get intimacy check-ins
+app.get("/api/intimacy/checkins", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const store = db.getStore();
+
+  const checkins = (store.intimacyCheckins || []).filter((c: any) => c.coupleId === coupleId);
+  res.json({ checkins });
+});
+
+// Create intimacy check-in
+app.post("/api/intimacy/checkins/create", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const { date, type, notes, mood_rating, linked_task_completion } = req.body;
+  const store = db.getStore();
+
+  if (!store.intimacyCheckins) store.intimacyCheckins = [];
+
+  const checkin = {
+    id: "ic_" + Date.now(),
+    date: date || new Date().toISOString().split('T')[0],
+    user_id: userId,
+    coupleId,
+    type: type || "quality_time",
+    notes,
+    mood_rating,
+    linked_task_completion,
+    created_at: new Date().toISOString()
+  };
+
+  store.intimacyCheckins.push(checkin);
+
+  // Generate insights periodically
+  generateIntimacyInsights(store, coupleId);
+
+  db.saveStore();
+  res.json({ success: true, checkin });
+});
+
+// Delete intimacy check-in
+app.post("/api/intimacy/checkins/delete", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id } = req.body;
+  const store = db.getStore();
+
+  store.intimacyCheckins = (store.intimacyCheckins || []).filter(
+    (c: any) => !(c.id === id && c.coupleId === coupleId)
+  );
+  db.saveStore();
+
+  res.json({ success: true });
+});
+
+// Get intimacy insights
+app.get("/api/intimacy/insights", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const store = db.getStore();
+
+  const insights = (store.intimacyInsights || []).filter((i: any) => i.coupleId === coupleId);
+  res.json({ insights });
+});
+
+// Helper: Generate intimacy insights based on check-ins and task completion
+function generateIntimacyInsights(store: any, coupleId: string) {
+  if (!store.intimacyInsights) store.intimacyInsights = [];
+
+  const checkins = (store.intimacyCheckins || []).filter((c: any) => c.coupleId === coupleId);
+  const tasks = (store.tasks || []).filter((t: any) => t.coupleId === coupleId);
+
+  // Insight 1: Frequency correlation with completed tasks
+  const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const recentCheckins = checkins.filter((c: any) => new Date(c.date) >= last30Days);
+  const recentTasks = tasks.filter((t: any) => new Date(t.completed_at || 0) >= last30Days && t.completed);
+
+  if (recentCheckins.length >= 3 && recentTasks.length >= 10) {
+    const checkinsDays = recentCheckins.map((c: any) => c.date);
+    const tasksCompletedDays = recentTasks.map((t: any) => t.completed_at?.split('T')[0]);
+
+    // Count days with both check-in and completed tasks
+    const correlatedDays = checkinsDays.filter((day: string) =>
+      tasksCompletedDays.some((tDay: string) => tDay === day)
+    ).length;
+
+    if (correlatedDays >= 2) {
+      const insight = {
+        id: "insight_" + Date.now(),
+        coupleId,
+        insight_text: `📊 Vocês tiveram ${correlatedDays} dias de qualidade juntos quando as tarefas domésticas estavam em dia! A frequência de vocês aumenta quando a louça não está na pia!`,
+        insight_type: "correlation",
+        generated_at: new Date().toISOString(),
+        is_read: false
+      };
+
+      // Avoid duplicate insights
+      if (!store.intimacyInsights.some((i: any) => i.insight_text === insight.insight_text)) {
+        store.intimacyInsights.push(insight);
+      }
+    }
+  }
+}
+
+// ==========================================
+// ENTERTAINMENT MODULE ENDPOINTS
+// ==========================================
+
+// ========== ENCONTRO GACHA (DATE ROULETTE) ==========
+
+// Get date options
+app.get("/api/date-options", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const store = db.getStore();
+
+  const options = (store.dateOptions || []).filter((o: any) => o.coupleId === coupleId && o.is_active);
+  res.json({ options });
+});
+
+// Create date option
+app.post("/api/date-options/create", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const store = db.getStore();
+  const { title, description, category, estimated_cost, emoji } = req.body;
+
+  if (!store.dateOptions) store.dateOptions = [];
+
+  const newOption = {
+    id: "do_" + Date.now(),
+    title,
+    description: description || "",
+    category: category || "outro",
+    estimated_cost: estimated_cost ? parseFloat(estimated_cost) : undefined,
+    emoji: emoji || "💖",
+    created_by: userId,
+    coupleId,
+    is_active: true,
+    times_chosen: 0
+  };
+
+  store.dateOptions.push(newOption);
+  db.saveStore();
+
+  res.json({ success: true, option: newOption });
+});
+
+// Update date option
+app.post("/api/date-options/update", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id, title, description, category, estimated_cost, emoji, is_active } = req.body;
+  const store = db.getStore();
+
+  const option = (store.dateOptions || []).find((o: any) => o.id === id && o.coupleId === coupleId);
+  if (!option) {
+    return res.status(404).json({ error: "Opção não encontrada" });
+  }
+
+  if (title !== undefined) option.title = title;
+  if (description !== undefined) option.description = description;
+  if (category !== undefined) option.category = category;
+  if (estimated_cost !== undefined) option.estimated_cost = parseFloat(estimated_cost);
+  if (emoji !== undefined) option.emoji = emoji;
+  if (is_active !== undefined) option.is_active = is_active;
+
+  db.saveStore();
+  res.json({ success: true, option });
+});
+
+// Delete date option
+app.post("/api/date-options/delete", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id } = req.body;
+  const store = db.getStore();
+
+  store.dateOptions = (store.dateOptions || []).filter((o: any) => !(o.id === id && o.coupleId === coupleId));
+  db.saveStore();
+
+  res.json({ success: true });
+});
+
+// Roll date gacha
+app.post("/api/date-options/roll", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const store = db.getStore();
+
+  const options = (store.dateOptions || []).filter((o: any) => o.coupleId === coupleId && o.is_active);
+
+  if (options.length === 0) {
+    return res.status(400).json({ error: "Nenhuma opção de encontro cadastrada!" });
+  }
+
+  // Random selection
+  const selectedOption = options[Math.floor(Math.random() * options.length)];
+
+  // Update times chosen
+  selectedOption.times_chosen = (selectedOption.times_chosen || 0) + 1;
+
+  // Record roll
+  if (!store.dateGachaRolls) store.dateGachaRolls = [];
+  const roll = {
+    id: "dgr_" + Date.now(),
+    date_option_id: selectedOption.id,
+    rolled_by: userId,
+    coupleId,
+    rolled_at: new Date().toISOString(),
+    is_accepted: false
+  };
+  store.dateGachaRolls.push(roll);
+
+  db.saveStore();
+  res.json({
+    success: true,
+    result: selectedOption,
+    rollId: roll.id
+  });
+});
+
+// Accept/reroll date gacha
+app.post("/api/date-options/accept", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { rollId, is_accepted, scheduled_date } = req.body;
+  const store = db.getStore();
+
+  const roll = (store.dateGachaRolls || []).find((r: any) => r.id === rollId && r.coupleId === coupleId);
+  if (!roll) {
+    return res.status(404).json({ error: "Rolagem não encontrada" });
+  }
+
+  roll.is_accepted = is_accepted;
+  if (scheduled_date) {
+    roll.scheduled_date = scheduled_date;
+  }
+
+  db.saveStore();
+  res.json({ success: true, roll });
+});
+
+// ========== WATCHLIST DO CASAL ==========
+
+// Get watchlist
+app.get("/api/watchlist", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const store = db.getStore();
+
+  const items = (store.watchlistItems || []).filter((w: any) => w.coupleId === coupleId);
+  res.json({ watchlist: items });
+});
+
+// Create watchlist item
+app.post("/api/watchlist/create", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const store = db.getStore();
+  const { title, type, platform, genre, total_episodes, poster_url, notes } = req.body;
+
+  if (!store.watchlistItems) store.watchlistItems = [];
+
+  // Determine whose turn next (default to partner of suggester)
+  const nextPicker = userId === "Leandro" ? "Kaisa" : "Leandro";
+
+  const newItem = {
+    id: "wl_" + Date.now(),
+    title,
+    type: type || "filme",
+    platform,
+    genre,
+    suggested_by: userId,
+    coupleId,
+    status: "quero_ver",
+    current_episode: 0,
+    total_episodes: total_episodes ? parseInt(total_episodes) : undefined,
+    rating: undefined,
+    notes,
+    added_at: new Date().toISOString(),
+    whose_turn: nextPicker,
+    poster_url
+  };
+
+  store.watchlistItems.push(newItem);
+  db.saveStore();
+
+  res.json({ success: true, item: newItem });
+});
+
+// Update watchlist item
+app.post("/api/watchlist/update", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id, status, current_episode, rating, notes } = req.body;
+  const store = db.getStore();
+
+  const item = (store.watchlistItems || []).find((w: any) => w.id === id && w.coupleId === coupleId);
+  if (!item) {
+    return res.status(404).json({ error: "Item não encontrado" });
+  }
+
+  if (status !== undefined) item.status = status;
+  if (current_episode !== undefined) item.current_episode = parseInt(current_episode);
+  if (rating !== undefined) item.rating = parseInt(rating);
+  if (notes !== undefined) item.notes = notes;
+
+  // If completed, set finished_at
+  if (status === "assistido") {
+    item.finished_at = new Date().toISOString();
+  }
+
+  db.saveStore();
+  res.json({ success: true, item });
+});
+
+// Delete watchlist item
+app.post("/api/watchlist/delete", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { id } = req.body;
+  const store = db.getStore();
+
+  store.watchlistItems = (store.watchlistItems || []).filter((w: any) => !(w.id === id && w.coupleId === coupleId));
+  db.saveStore();
+
+  res.json({ success: true });
+});
+
+// Mark episode as watched
+app.post("/api/watchlist/watch-episode", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const { itemId } = req.body;
+  const store = db.getStore();
+
+  const item = (store.watchlistItems || []).find((w: any) => w.id === itemId && w.coupleId === coupleId);
+  if (!item) {
+    return res.status(404).json({ error: "Item não encontrado" });
+  }
+
+  // Increment episode
+  item.current_episode = (item.current_episode || 0) + 1;
+
+  // If all episodes watched, mark as completed
+  if (item.total_episodes && item.current_episode >= item.total_episodes) {
+    item.status = "assistido";
+    item.finished_at = new Date().toISOString();
+  }
+
+  // Record watch history
+  if (!store.watchHistory) store.watchHistory = [];
+  store.watchHistory.push({
+    id: "wh_" + Date.now(),
+    watchlist_item_id: itemId,
+    watched_at: new Date().toISOString(),
+    watched_by: userId,
+    coupleId
+  });
+
+  // Toggle whose turn to pick next
+  item.whose_turn = userId === "Leandro" ? "Kaisa" : "Leandro";
+
+  db.saveStore();
+  res.json({ success: true, item });
+});
+
+// Suggest random movie
+app.get("/api/watchlist/suggest-random", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const store = db.getStore();
+
+  // Get items from "quero_ver" and whose turn matches the requester
+  const items = (store.watchlistItems || []).filter(
+    (w: any) => w.coupleId === coupleId && w.status === "quero_ver"
+  );
+
+  if (items.length === 0) {
+    return res.json({ suggestion: null, message: "Nenhum item disponível na watchlist" });
+  }
+
+  // Prefer items suggested by whose_turn user
+  const whoseTurnItems = items.filter((w: any) => w.whose_turn === req.headers["x-user-id"]);
+
+  const pool = whoseTurnItems.length > 0 ? whoseTurnItems : items;
+  const suggestion = pool[Math.floor(Math.random() * pool.length)];
+
+  res.json({ suggestion });
+});
+
+// ========== WISHLIST FINANCIAL INTEGRATION ==========
+
+// Add deposit to wishlist item
+app.post("/api/wishlist/deposit", (req, res) => {
+  const { coupleId, userId } = getRequestCredentials(req);
+  const { wishlistItemId, amount, notes } = req.body;
+  const store = db.getStore();
+  const { users } = getCoupleAndUsers(store, coupleId || "couple_1");
+
+  const item = (store.wishlist || []).find((w: any) => w.id === wishlistItemId && w.coupleId === coupleId);
+  if (!item) {
+    return res.status(404).json({ error: "Item da wishlist não encontrado" });
+  }
+
+  const depositAmount = parseFloat(amount);
+  if (isNaN(depositAmount) || depositAmount <= 0) {
+    return res.status(400).json({ error: "Valor de depósito inválido" });
+  }
+
+  // Update wishlist item savings
+  item.saving_saved = (item.saving_saved || 0) + depositAmount;
+
+  // Record deposit
+  if (!store.wishlistDeposits) store.wishlistDeposits = [];
+  const deposit = {
+    id: "dep_" + Date.now(),
+    wishlist_item_id: wishlistItemId,
+    user_id: userId,
+    coupleId,
+    amount: depositAmount,
+    deposited_at: new Date().toISOString(),
+    coin_bonus_awarded: false,
+    notes
+  };
+  store.wishlistDeposits.push(deposit);
+
+  // Award +10 coins to depositor
+  if (users[userId]) {
+    users[userId].coins = (users[userId].coins || 0) + 10;
+    deposit.coin_bonus_awarded = true;
+  }
+
+  logActivityForCouple(store, coupleId, "wishlist_deposit", `💰 ${userId} depositou R$ ${depositAmount.toFixed(2)} para "${item.name}" (+10 moedas!)`);
+
+  db.saveStore();
+  res.json({
+    success: true,
+    deposit,
+    item,
+    bonusAwarded: 10,
+    users
+  });
+});
+
+// Get deposits for wishlist item
+app.get("/api/wishlist/deposits", (req, res) => {
+  const { coupleId } = getRequestCredentials(req);
+  const { itemId } = req.query;
+  const store = db.getStore();
+
+  const deposits = (store.wishlistDeposits || [])
+    .filter((d: any) => d.coupleId === coupleId && (!itemId || d.wishlist_item_id === itemId))
+    .sort((a: any, b: any) => new Date(b.deposited_at).getTime() - new Date(a.deposited_at).getTime());
+
+  res.json({ deposits });
 });
 
 // ==========================================

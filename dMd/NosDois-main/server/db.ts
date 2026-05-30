@@ -57,6 +57,23 @@ interface DatabaseSchema {
   quizzes?: any[];
   spicyCheckins?: any[];
   secretWishes?: any[];
+  // INTIMACY MODULE
+  spicyRewards?: any[]; // Mercado Negro
+  spicyQuests?: any[]; // Missões +18
+  spicyQuestCompletions?: any[];
+  loveDiceActions?: any[]; // Dados do Amor
+  loveDiceLocations?: any[];
+  loveDiceRolls?: any[];
+  secretFantasies?: any[]; // Cofre de Fantasias
+  userFantasySelections?: any[];
+  intimacyCheckins?: any[]; // Tracker de Intimidade
+  intimacyInsights?: any[];
+  // ENTERTAINMENT MODULE
+  dateOptions?: any[]; // Encontro Gacha
+  dateGachaRolls?: any[];
+  watchlistItems?: any[]; // Watchlist do Casal
+  watchHistory?: any[];
+  wishlistDeposits?: any[]; // Financial Integration
 }
 
 const DEFAULT_USERS: { [key: string]: User } = {
@@ -376,6 +393,67 @@ const DEFAULT_FIXED_BILLS = [
   { id: "h_bill_2", name: "Internet Fibra Óptica", value: "119.90", due_date: `2026-06-15`, is_paid: false, coupleId: "couple_1" }
 ];
 
+// ==========================================
+// INTIMACY MODULE DEFAULTS
+// ==========================================
+
+const DEFAULT_SPICY_REWARDS = [
+  { id: "spicy_1", title: "Vale Striptease", description: "Uma performance exclusiva só para você.", cost: 200, emoji: "🌶️", is_repeatable: true, created_by: "system", coupleId: "couple_1", created_at: new Date().toISOString(), is_active: true },
+  { id: "spicy_2", title: "Massagem Sensual", description: "30 minutos de massagem com óleos aromáticos.", cost: 180, emoji: "💆‍♀️", is_repeatable: true, created_by: "system", coupleId: "couple_1", created_at: new Date().toISOString(), is_active: true },
+  { id: "spicy_3", title: "Noite de Spa a Dois", description: "Banho de imersão, velas e relaxamento total.", cost: 350, emoji: "🛁", is_repeatable: true, created_by: "system", coupleId: "couple_1", created_at: new Date().toISOString(), is_active: true },
+  { id: "spicy_4", title: "Jantar Romântico em Casa", description: "Parceiro prepara um jantar especial com direito a sobremesa.", cost: 150, emoji: "🍽️", is_repeatable: true, created_by: "system", coupleId: "couple_1", created_at: new Date().toISOString(), is_active: true }
+];
+
+const DEFAULT_SPICY_QUESTS = [
+  { id: "sq_1", title: "Sexta do Amor", description: "Planejem uma noite especial juntos, sem celular.", bonus_xp: 100, bonus_coins: 200, created_by: "system", coupleId: "couple_1", created_at: new Date().toISOString(), is_active: true, is_featured: true },
+  { id: "sq_2", title: "Desafio da Semana", description: "Tentem algo novo juntos que nunca fizeram.", bonus_xp: 80, bonus_coins: 150, created_by: "system", coupleId: "couple_1", created_at: new Date().toISOString(), is_active: true, is_featured: false }
+];
+
+const DEFAULT_LOVE_DICE_ACTIONS = [
+  { id: "da_1", text: "Beijar", created_by: "system", coupleId: "couple_1", is_active: true, order: 1 },
+  { id: "da_2", text: "Massagem", created_by: "system", coupleId: "couple_1", is_active: true, order: 2 },
+  { id: "da_3", text: "Cafuné", created_by: "system", coupleId: "couple_1", is_active: true, order: 3 },
+  { id: "da_4", text: "Abraço apertado", created_by: "system", coupleId: "couple_1", is_active: true, order: 4 },
+  { id: "da_5", text: "Beijo no pescoço", created_by: "system", coupleId: "couple_1", is_active: true, order: 5 },
+  { id: "da_6", text: "Sussurrar algo sexy", created_by: "system", coupleId: "couple_1", is_active: true, order: 6 }
+];
+
+const DEFAULT_LOVE_DICE_LOCATIONS = [
+  { id: "dl_1", text: "nos lábios", created_by: "system", coupleId: "couple_1", is_active: true, order: 1 },
+  { id: "dl_2", text: "no pescoço", created_by: "system", coupleId: "couple_1", is_active: true, order: 2 },
+  { id: "dl_3", text: "nas costas", created_by: "system", coupleId: "couple_1", is_active: true, order: 3 },
+  { id: "dl_4", text: "na orelha", created_by: "system", coupleId: "couple_1", is_active: true, order: 4 },
+  { id: "dl_5", text: "no ombro", created_by: "system", coupleId: "couple_1", is_active: true, order: 5 },
+  { id: "dl_6", text: "na mão", created_by: "system", coupleId: "couple_1", is_active: true, order: 6 }
+];
+
+const DEFAULT_SECRET_FANTASIES = [
+  { id: "sf_1", title: "Jantar romântico em casa com velas", category: "Romance", added_by: "system", is_custom: false, is_active: true },
+  { id: "sf_2", title: "Massagem com óleos aromáticos", category: "Intimidade", added_by: "system", is_custom: false, is_active: true },
+  { id: "sf_3", title: "Viagem de fim de semana surpresa", category: "Aventura", added_by: "system", is_custom: false, is_active: true },
+  { id: "sf_4", title: "Noite de filmes com pipoca e cobertor", category: "Romance", added_by: "system", is_custom: false, is_active: true },
+  { id: "sf_5", title: "Banho de banheira juntos", category: "Intimidade", added_by: "system", is_custom: false, is_active: true },
+  { id: "sf_6", title: "Piquenique no parque ao pôr do sol", category: "Romance", added_by: "system", is_custom: false, is_active: true }
+];
+
+// ==========================================
+// ENTERTAINMENT MODULE DEFAULTS
+// ==========================================
+
+const DEFAULT_DATE_OPTIONS = [
+  { id: "do_1", title: "Jantar romântico italiano", category: "restaurante", emoji: "🍝", created_by: "system", coupleId: "couple_1", is_active: true, times_chosen: 0 },
+  { id: "do_2", title: "Sessão de cinema", category: "filme", emoji: "🎬", created_by: "system", coupleId: "couple_1", is_active: true, times_chosen: 0 },
+  { id: "do_3", title: "Passeio no parque", category: "passeio", emoji: "🌳", created_by: "system", coupleId: "couple_1", is_active: true, times_chosen: 0 },
+  { id: "do_4", title: "Noite de jogos em casa", category: "em_casa", emoji: "🎲", created_by: "system", coupleId: "couple_1", is_active: true, times_chosen: 0 },
+  { id: "do_5", title: "Viagem de um dia", category: "aventura", emoji: "🚗", created_by: "system", coupleId: "couple_1", is_active: true, times_chosen: 0 },
+  { id: "do_6", title: "Barzinho com música ao vivo", category: "outro", emoji: "🎤", created_by: "system", coupleId: "couple_1", is_active: true, times_chosen: 0 }
+];
+
+const DEFAULT_WATCHLIST = [
+  { id: "wl_1", title: "La La Land", type: "filme", genre: "Romance", platform: "Netflix", suggested_by: "Leandro", coupleId: "couple_1", status: "quero_ver", whose_turn: "Kaisa", added_at: new Date().toISOString(), poster_url: "https://images.unsplash.com/photo-1489599849925-91991ef6ad7d?auto=format&fit=crop&q=80&w=150" },
+  { id: "wl_2", title: "Stranger Things", type: "serie", genre: "Ficção Científica", platform: "Netflix", suggested_by: "Kaisa", coupleId: "couple_1", status: "assistindo", current_episode: 3, total_episodes: 8, whose_turn: "Leandro", added_at: new Date().toISOString(), poster_url: "https://images.unsplash.com/photo-1594909122845-11c5497e7b54?auto=format&fit=crop&q=80&w=150" }
+];
+
 export class DBStore {
   private data!: DatabaseSchema;
 
@@ -430,6 +508,53 @@ export class DBStore {
         if (!this.data.fixedBills || this.data.fixedBills.length === 0) {
           this.data.fixedBills = [...DEFAULT_FIXED_BILLS];
         }
+        // Intimacy Module initialization
+        if (!this.data.spicyRewards || this.data.spicyRewards.length === 0) {
+          this.data.spicyRewards = [...DEFAULT_SPICY_REWARDS];
+        }
+        if (!this.data.spicyQuests || this.data.spicyQuests.length === 0) {
+          this.data.spicyQuests = [...DEFAULT_SPICY_QUESTS];
+        }
+        if (!this.data.spicyQuestCompletions) {
+          this.data.spicyQuestCompletions = [];
+        }
+        if (!this.data.loveDiceActions || this.data.loveDiceActions.length === 0) {
+          this.data.loveDiceActions = [...DEFAULT_LOVE_DICE_ACTIONS];
+        }
+        if (!this.data.loveDiceLocations || this.data.loveDiceLocations.length === 0) {
+          this.data.loveDiceLocations = [...DEFAULT_LOVE_DICE_LOCATIONS];
+        }
+        if (!this.data.loveDiceRolls) {
+          this.data.loveDiceRolls = [];
+        }
+        if (!this.data.secretFantasies || this.data.secretFantasies.length === 0) {
+          this.data.secretFantasies = [...DEFAULT_SECRET_FANTASIES];
+        }
+        if (!this.data.userFantasySelections) {
+          this.data.userFantasySelections = [];
+        }
+        if (!this.data.intimacyCheckins) {
+          this.data.intimacyCheckins = [];
+        }
+        if (!this.data.intimacyInsights) {
+          this.data.intimacyInsights = [];
+        }
+        // Entertainment Module initialization
+        if (!this.data.dateOptions || this.data.dateOptions.length === 0) {
+          this.data.dateOptions = [...DEFAULT_DATE_OPTIONS];
+        }
+        if (!this.data.dateGachaRolls) {
+          this.data.dateGachaRolls = [];
+        }
+        if (!this.data.watchlistItems || this.data.watchlistItems.length === 0) {
+          this.data.watchlistItems = [...DEFAULT_WATCHLIST];
+        }
+        if (!this.data.watchHistory) {
+          this.data.watchHistory = [];
+        }
+        if (!this.data.wishlistDeposits) {
+          this.data.wishlistDeposits = [];
+        }
       } catch (err) {
         console.error("Error reading database file, resetting to seeds", err);
         this.resetToDefaults();
@@ -478,7 +603,24 @@ export class DBStore {
       houseDocuments: [...DEFAULT_HOUSE_DOCUMENTS],
       houseMaintenances: [...DEFAULT_HOUSE_MAINTENANCES],
       houseContacts: [...DEFAULT_HOUSE_CONTACTS],
-      fixedBills: [...DEFAULT_FIXED_BILLS]
+      fixedBills: [...DEFAULT_FIXED_BILLS],
+      // Intimacy Module
+      spicyRewards: [...DEFAULT_SPICY_REWARDS],
+      spicyQuests: [...DEFAULT_SPICY_QUESTS],
+      spicyQuestCompletions: [],
+      loveDiceActions: [...DEFAULT_LOVE_DICE_ACTIONS],
+      loveDiceLocations: [...DEFAULT_LOVE_DICE_LOCATIONS],
+      loveDiceRolls: [],
+      secretFantasies: [...DEFAULT_SECRET_FANTASIES],
+      userFantasySelections: [],
+      intimacyCheckins: [],
+      intimacyInsights: [],
+      // Entertainment Module
+      dateOptions: [...DEFAULT_DATE_OPTIONS],
+      dateGachaRolls: [],
+      watchlistItems: [...DEFAULT_WATCHLIST],
+      watchHistory: [],
+      wishlistDeposits: []
     };
     this.save();
   }

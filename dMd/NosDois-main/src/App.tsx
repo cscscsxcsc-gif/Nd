@@ -5482,6 +5482,7 @@ export default function App() {
                 triggerCustomNotify={triggerCustomNotify}
                 onRefresh={loadState}
                 handleAction={handleAction}
+                appFetch={appFetch}
               />
             )}
 
