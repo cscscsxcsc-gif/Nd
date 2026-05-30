@@ -43,6 +43,17 @@
         "7-days-no-dishes",
         "first-trip-album"
       ]
+    },
+    "couple_1780182440130_742": {
+      "id": "couple_1780182440130_742",
+      "invite_code": "LOVE17",
+      "connected": false,
+      "home_level": 1,
+      "total_points": 0,
+      "unlocked_achievements": [
+        "activity:register:🏠 Lar digital iniciado por leandra!:2026-05-30T23:07:20.131Z"
+      ],
+      "coins": 0
     }
   },
   "couplesUsers": {
@@ -67,6 +78,28 @@
         "points_weekly": 55,
         "coins": 0
       }
+    },
+    "couple_1780182440130_742": {
+      "Leandro": {
+        "id": "Leandro",
+        "name": "leandra",
+        "partner_nickname": "Meu Amor",
+        "color": "#3B82F6",
+        "timezone": "America/Sao_Paulo",
+        "avatar_url": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+        "points_weekly": 0,
+        "coins": 0
+      },
+      "Kaisa": {
+        "id": "Kaisa",
+        "name": "Parceiro 2",
+        "partner_nickname": "Minha Vida",
+        "color": "#EC4899",
+        "timezone": "America/Sao_Paulo",
+        "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150",
+        "points_weekly": 0,
+        "coins": 0
+      }
     }
   },
   "accounts": [
@@ -81,6 +114,12 @@
       "passwordHash": "123456",
       "userId": "Kaisa",
       "coupleId": "couple_1"
+    },
+    {
+      "email": "leehviroi@gmail.com",
+      "passwordHash": "369813",
+      "userId": "Leandro",
+      "coupleId": "couple_1780182440130_742"
     }
   ],
   "tasks": [
