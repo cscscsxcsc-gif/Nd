@@ -1,18 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  Heart, 
-  Mail, 
-  Lock, 
-  User, 
-  Sparkles, 
-  Copy, 
-  Check, 
-  ArrowRight, 
-  ArrowLeft,
-  Smartphone,
-  Home
-} from "lucide-react";
+import { Heart, Mail, Lock, User, Sparkles, Copy, Check, ArrowRight, ArrowLeft, Smartphone, Hop as Home } from "lucide-react";
 
 interface AuthScreenProps {
   onAuthSuccess: (userId: string, coupleId: string, email: string) => void;

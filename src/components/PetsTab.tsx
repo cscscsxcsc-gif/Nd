@@ -1,17 +1,5 @@
 import React, { useState } from "react";
-import { 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  FileText, 
-  Activity, 
-  Scale, 
-  ShieldCheck, 
-  FileUp, 
-  Heart, 
-  Calendar,
-  AlertTriangle
-} from "lucide-react";
+import { Plus, Trash2, CreditCard as Edit3, FileText, Activity, Scale, ShieldCheck, FileUp, Heart, Calendar, TriangleAlert as AlertTriangle } from "lucide-react";
 import { Pet, PetVaccine, PetMedication, PetWeightRecord, PetDocument, InventoryItem } from "../types";
 
 interface PetsTabProps {

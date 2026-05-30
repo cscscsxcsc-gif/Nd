@@ -9,41 +9,7 @@ import AuthScreen from "./components/AuthScreen";
 import PetsTab from "./components/PetsTab";
 import HouseTab from "./components/HouseTab";
 import SpicyTab from "./components/SpicyTab";
-import {
-  Home as HomeIcon,
-  CheckSquare,
-  Calendar as CalendarIcon,
-  ShoppingBag,
-  MoreHorizontal,
-  Sparkles,
-  Heart,
-  Plus,
-  MessageSquare,
-  Trash2,
-  DollarSign,
-  Image as ImageIcon,
-  Smile,
-  Settings,
-  Users,
-  RotateCcw,
-  AlertTriangle,
-  ArrowRight,
-  Clipboard,
-  MapPin,
-  Gift,
-  Clock,
-  ShieldAlert,
-  ChevronRight,
-  Sparkle,
-  BookOpen,
-  Info,
-  Award,
-  Trophy,
-  Check,
-  Edit,
-  Archive,
-  Flame
-} from "lucide-react";
+import { Hop as HomeIcon, SquareCheck as CheckSquare, Calendar as CalendarIcon, ShoppingBag, MoveHorizontal as MoreHorizontal, Sparkles, Heart, Plus, MessageSquare, Trash2, DollarSign, Image as ImageIcon, Smile, Settings, Users, RotateCcw, TriangleAlert as AlertTriangle, ArrowRight, Clipboard, MapPin, Gift, Clock, ShieldAlert, ChevronRight, Sparkle, BookOpen, Info, Award, Trophy, Check, CreditCard as Edit, Archive, Flame } from "lucide-react";
 import {
   TaskCategory,
   TaskPriority,

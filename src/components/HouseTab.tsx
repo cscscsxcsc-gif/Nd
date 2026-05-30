@@ -1,20 +1,5 @@
 import React, { useState } from "react";
-import { 
-  Plus, 
-  Trash2, 
-  FileText, 
-  Phone, 
-  Copy, 
-  Calendar, 
-  CheckCircle, 
-  Wrench, 
-  AlertTriangle,
-  ExternalLink,
-  DollarSign,
-  RefreshCw,
-  ShieldCheck,
-  CreditCard
-} from "lucide-react";
+import { Plus, Trash2, FileText, Phone, Copy, Calendar, CircleCheck as CheckCircle, Wrench, TriangleAlert as AlertTriangle, ExternalLink, DollarSign, RefreshCw, ShieldCheck, CreditCard } from "lucide-react";
 
 interface HouseDocument {
   id: string;
